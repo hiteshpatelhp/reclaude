@@ -1,0 +1,404 @@
+{
+  "generated_at": "2026-04-28T11:22:36.211109+00:00",
+  "cwd": "/Users/hpatel04/Documents/pp/openterrascan/reclaude",
+  "repo_identifier": "reclaude",
+  "username": "hpatel04",
+  "hostname": "HF90PFW9L0",
+  "repo_fingerprint": "1e2aa0946d80a985",
+  "repo_content_fingerprint": "cc910bea5fbae0d4",
+  "mode": "register_only",
+  "file_count": 60,
+  "signals": [
+    {
+      "rule_id": "npm-manifests",
+      "kind": "path_glob",
+      "confidence": "high",
+      "total_hits": 2,
+      "hits": [
+        {
+          "file": "package-lock.json"
+        },
+        {
+          "file": "package.json"
+        }
+      ]
+    },
+    {
+      "rule_id": "js-ts-sources",
+      "kind": "path_glob",
+      "confidence": "medium",
+      "total_hits": 39,
+      "hits": [
+        {
+          "file": "dist-electron/db.js"
+        },
+        {
+          "file": "dist-electron/indexer.d.ts"
+        },
+        {
+          "file": "dist-electron/indexer.js"
+        },
+        {
+          "file": "dist-electron/ipc.d.ts"
+        },
+        {
+          "file": "dist-electron/ipc.js"
+        },
+        {
+          "file": "dist-electron/main.d.ts"
+        },
+        {
+          "file": "dist-electron/main.js"
+        },
+        {
+          "file": "dist-electron/paths.d.ts"
+        },
+        {
+          "file": "dist-electron/paths.js"
+        },
+        {
+          "file": "dist-electron/preload.d.ts"
+        }
+      ]
+    },
+    {
+      "rule_id": "frontend-framework-node",
+      "kind": "content_regex",
+      "confidence": "medium",
+      "total_hits": 1,
+      "hits": [
+        {
+          "file": "package.json",
+          "pattern": "react"
+        }
+      ]
+    },
+    {
+      "rule_id": "database-orm-node",
+      "kind": "content_regex",
+      "confidence": "high",
+      "total_hits": 2,
+      "hits": [
+        {
+          "file": "package.json",
+          "pattern": "better-sqlite3"
+        },
+        {
+          "file": "package.json",
+          "pattern": "sqlite3"
+        }
+      ]
+    },
+    {
+      "rule_id": "injection-signals-node",
+      "kind": "content_regex",
+      "confidence": "medium",
+      "total_hits": 7,
+      "hits": [
+        {
+          "file": "dist-electron/db.js",
+          "pattern": "exec\\("
+        },
+        {
+          "file": "dist-electron/scheduler.js",
+          "pattern": "child_process"
+        },
+        {
+          "file": "dist-electron/terminal.js",
+          "pattern": "child_process"
+        },
+        {
+          "file": "electron/db.ts",
+          "pattern": "exec\\("
+        },
+        {
+          "file": "electron/scheduler.ts",
+          "pattern": "child_process"
+        },
+        {
+          "file": "electron/terminal.ts",
+          "pattern": "child_process"
+        },
+        {
+          "file": "electron/terminal.ts",
+          "pattern": "spawn\\("
+        }
+      ]
+    }
+  ],
+  "selected_skills": {
+    "npm-supply-chain": {
+      "skill": "npm-supply-chain",
+      "sources": [
+        {
+          "rule_id": "npm-manifests",
+          "kind": "path_glob",
+          "confidence": "high",
+          "evidence_count": 2,
+          "evidence": [
+            {
+              "file": "package-lock.json"
+            },
+            {
+              "file": "package.json"
+            }
+          ]
+        }
+      ],
+      "confidence": "high",
+      "attached_content": "none",
+      "full_materialized": false,
+      "strongest_rule": "npm-manifests"
+    },
+    "dep-supply-chain-review": {
+      "skill": "dep-supply-chain-review",
+      "sources": [
+        {
+          "rule_id": "npm-manifests",
+          "kind": "path_glob",
+          "confidence": "high",
+          "evidence_count": 2,
+          "evidence": [
+            {
+              "file": "package-lock.json"
+            },
+            {
+              "file": "package.json"
+            }
+          ]
+        }
+      ],
+      "confidence": "high",
+      "attached_content": "none",
+      "full_materialized": false,
+      "strongest_rule": "npm-manifests"
+    },
+    "js-dom-injection": {
+      "skill": "js-dom-injection",
+      "sources": [
+        {
+          "rule_id": "frontend-framework-node",
+          "kind": "content_regex",
+          "confidence": "medium",
+          "evidence_count": 1,
+          "evidence": [
+            {
+              "file": "package.json",
+              "pattern": "react"
+            }
+          ]
+        }
+      ],
+      "confidence": "medium",
+      "attached_content": "none",
+      "full_materialized": false,
+      "strongest_rule": "frontend-framework-node"
+    },
+    "frontend-browser-security": {
+      "skill": "frontend-browser-security",
+      "sources": [
+        {
+          "rule_id": "frontend-framework-node",
+          "kind": "content_regex",
+          "confidence": "medium",
+          "evidence_count": 1,
+          "evidence": [
+            {
+              "file": "package.json",
+              "pattern": "react"
+            }
+          ]
+        }
+      ],
+      "confidence": "medium",
+      "attached_content": "none",
+      "full_materialized": false,
+      "strongest_rule": "frontend-framework-node"
+    },
+    "database-security": {
+      "skill": "database-security",
+      "sources": [
+        {
+          "rule_id": "database-orm-node",
+          "kind": "content_regex",
+          "confidence": "high",
+          "evidence_count": 2,
+          "evidence": [
+            {
+              "file": "package.json",
+              "pattern": "better-sqlite3"
+            },
+            {
+              "file": "package.json",
+              "pattern": "sqlite3"
+            }
+          ]
+        }
+      ],
+      "confidence": "high",
+      "attached_content": "none",
+      "full_materialized": false,
+      "strongest_rule": "database-orm-node"
+    },
+    "injection-checker": {
+      "skill": "injection-checker",
+      "sources": [
+        {
+          "rule_id": "database-orm-node",
+          "kind": "content_regex",
+          "confidence": "high",
+          "evidence_count": 2,
+          "evidence": [
+            {
+              "file": "package.json",
+              "pattern": "better-sqlite3"
+            },
+            {
+              "file": "package.json",
+              "pattern": "sqlite3"
+            }
+          ]
+        },
+        {
+          "rule_id": "injection-signals-node",
+          "kind": "content_regex",
+          "confidence": "medium",
+          "evidence_count": 7,
+          "evidence": [
+            {
+              "file": "dist-electron/db.js",
+              "pattern": "exec\\("
+            },
+            {
+              "file": "dist-electron/scheduler.js",
+              "pattern": "child_process"
+            },
+            {
+              "file": "dist-electron/terminal.js",
+              "pattern": "child_process"
+            },
+            {
+              "file": "electron/db.ts",
+              "pattern": "exec\\("
+            },
+            {
+              "file": "electron/scheduler.ts",
+              "pattern": "child_process"
+            }
+          ]
+        }
+      ],
+      "confidence": "high",
+      "attached_content": "none",
+      "full_materialized": false,
+      "strongest_rule": "database-orm-node"
+    },
+    "parameterized-sql": {
+      "skill": "parameterized-sql",
+      "sources": [
+        {
+          "rule_id": "database-orm-node",
+          "kind": "content_regex",
+          "confidence": "high",
+          "evidence_count": 2,
+          "evidence": [
+            {
+              "file": "package.json",
+              "pattern": "better-sqlite3"
+            },
+            {
+              "file": "package.json",
+              "pattern": "sqlite3"
+            }
+          ]
+        },
+        {
+          "rule_id": "injection-signals-node",
+          "kind": "content_regex",
+          "confidence": "medium",
+          "evidence_count": 7,
+          "evidence": [
+            {
+              "file": "dist-electron/db.js",
+              "pattern": "exec\\("
+            },
+            {
+              "file": "dist-electron/scheduler.js",
+              "pattern": "child_process"
+            },
+            {
+              "file": "dist-electron/terminal.js",
+              "pattern": "child_process"
+            },
+            {
+              "file": "electron/db.ts",
+              "pattern": "exec\\("
+            },
+            {
+              "file": "electron/scheduler.ts",
+              "pattern": "child_process"
+            }
+          ]
+        }
+      ],
+      "confidence": "high",
+      "attached_content": "none",
+      "full_materialized": false,
+      "strongest_rule": "database-orm-node"
+    },
+    "os-command-injection-prevention": {
+      "skill": "os-command-injection-prevention",
+      "sources": [
+        {
+          "rule_id": "injection-signals-node",
+          "kind": "content_regex",
+          "confidence": "medium",
+          "evidence_count": 7,
+          "evidence": [
+            {
+              "file": "dist-electron/db.js",
+              "pattern": "exec\\("
+            },
+            {
+              "file": "dist-electron/scheduler.js",
+              "pattern": "child_process"
+            },
+            {
+              "file": "dist-electron/terminal.js",
+              "pattern": "child_process"
+            },
+            {
+              "file": "electron/db.ts",
+              "pattern": "exec\\("
+            },
+            {
+              "file": "electron/scheduler.ts",
+              "pattern": "child_process"
+            }
+          ]
+        }
+      ],
+      "confidence": "medium",
+      "attached_content": "none",
+      "full_materialized": false,
+      "strongest_rule": "injection-signals-node"
+    }
+  },
+  "suppressed_skills": {},
+  "metrics": {
+    "bytes_read_total": 500000,
+    "files_read_total": 181,
+    "read_budget_bytes": 500000,
+    "remaining_read_budget_end": 0,
+    "detection_duration_ms": 231
+  },
+  "cache_hit": false,
+  "index_mtime": 1776093335.481448,
+  "plugin_name": "lazy-security-loader",
+  "plugin_version": "unknown",
+  "index_version": 2,
+  "index_hash": "sha256:06ae1e709e4a38ef44d8926b4987eb6a6455cd860d934da612745936daea2fb9",
+  "synopsis_hash": null,
+  "filtered_out": 0,
+  "min_confidence": "low"
+}

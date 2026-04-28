@@ -1,0 +1,27 @@
+{
+  "skills": [
+    "database-security",
+    "dep-supply-chain-review",
+    "frontend-browser-security",
+    "injection-checker",
+    "js-dom-injection",
+    "npm-supply-chain",
+    "os-command-injection-prevention",
+    "parameterized-sql"
+  ],
+  "analysis_skills": [
+    "database-security",
+    "dep-supply-chain-review",
+    "frontend-browser-security",
+    "injection-checker",
+    "js-dom-injection",
+    "npm-supply-chain",
+    "os-command-injection-prevention",
+    "parameterized-sql"
+  ],
+  "tools": [
+    "checkov",
+    "semgrep",
+    "xeol"
+  ]
+}
