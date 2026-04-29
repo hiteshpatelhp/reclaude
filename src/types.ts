@@ -34,10 +34,10 @@ declare global {
       deleteSession(id: string): Promise<{ ok: true; trashPath: string }>;
       restoreSession(id: string): Promise<{ ok: true; restoredTo: string }>;
       purgeSession(id: string): Promise<{ ok: true }>;
-      reindex(): Promise<{ scanned: number; added: number; updated: number; unchanged: number }>;
+      reindex(): Promise<{ scanned: number; added: number; updated: number; unchanged: number; skipped?: number }>;
       schedulerStatus(): Promise<{ installed: boolean }>;
-      schedulerInstall(): Promise<{ ok: true }>;
-      schedulerUninstall(): Promise<{ ok: true }>;
+      schedulerInstall(): Promise<{ ok: true } | { ok: false; cancelled: true }>;
+      schedulerUninstall(): Promise<{ ok: true } | { ok: false; cancelled: true }>;
       onSessionsChanged(cb: () => void): () => void;
     };
   }

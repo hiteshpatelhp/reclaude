@@ -71,6 +71,16 @@ npm run rebuild
 
 All commands produce installers/packages under `release/`.
 
+### Release-build prerequisites
+
+For any artifact you intend to ship to other people:
+
+- **Use `npm ci`, not `npm install`** in CI / release pipelines. `npm ci` honours the lockfile exactly and refuses to mutate it; `npm install` will silently bump pinned versions if a transitive dep ships a new minor. All direct deps in `package.json` are pinned to exact versions for the same reason.
+- **macOS notarization** is wired through `scripts/notarize.js` (an `afterSign` hook). It runs only when `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, and `APPLE_TEAM_ID` are set — without them, the `.app` ships unsigned and is blocked by Gatekeeper. Set `SKIP_NOTARIZATION=1` to opt out explicitly. ASAR integrity (`enableEmbeddedAsarIntegrityValidation`) is configured but only meaningful when paired with a code-signed binary.
+- **Windows code signing** requires a `.pfx` certificate via `CSC_LINK` and `CSC_KEY_PASSWORD`. Without it, the NSIS installer triggers SmartScreen warnings.
+- **Bypass the postinstall script in CI** with `npm ci --ignore-scripts`, then run `npm run rebuild` separately as a verified, isolated step. This prevents a future compromised package from gaining native-code execution during install.
+
+
 ### macOS — DMG
 
 ```bash

@@ -4,9 +4,33 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { launchAgentPlistPath, logDir } from './paths';
+import { assertSchedulerSafePath } from './validation';
+
+// Absolute paths to system schedulers. Using the binary name alone would
+// resolve via the ambient PATH, so a user with `~/bin/launchctl` (or a
+// hijacked PATH entry) could redirect privileged scheduler operations to
+// a malicious binary. These locations are part of the OS image on every
+// supported platform.
+const LAUNCHCTL = '/bin/launchctl';
+const SYSTEMCTL = '/usr/bin/systemctl';
+// schtasks lives under SystemRoot, which is typically C:\Windows. We
+// resolve via the SystemRoot env var with a sane default; if SystemRoot
+// is unset (extremely unusual) fall back to the C:\Windows convention.
+const SCHTASKS = path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'schtasks.exe');
 
 // Each platform exposes the same surface: install / uninstall / installed.
 // macOS: launchd. Windows: schtasks. Linux: systemd user units.
+//
+// Security notes:
+//   - The plist / unit / task command embeds process.execPath and
+//     app.getAppPath(). Both are Electron-controlled but if the install
+//     path contains a quote or newline (unusual but possible) the embedded
+//     string would break the unit. assertSchedulerSafePath() rejects those
+//     up-front rather than producing a malformed unit.
+//   - The macOS template is the embedded DEFAULT_PLIST_TEMPLATE constant
+//     ONLY. Reading from <appPath>/resources/launchagent.plist is removed:
+//     in dev mode that path is repo-controlled, and any process running
+//     as the user could swap the file before install fires.
 
 export function schedulerInstalled(): boolean {
   if (process.platform === 'darwin') return fs.existsSync(launchAgentPlistPath());
@@ -29,28 +53,24 @@ export function uninstallScheduler(): { ok: true } {
 // ---------- macOS / launchd ----------
 
 function installMac(): { ok: true } {
-  const electronPath = process.execPath;
-  const appPath = app.getAppPath();
-  const plistTemplatePath = path.join(appPath, 'resources', 'launchagent.plist');
-  let template: string;
-  if (fs.existsSync(plistTemplatePath)) {
-    template = fs.readFileSync(plistTemplatePath, 'utf8');
-  } else {
-    template = DEFAULT_PLIST_TEMPLATE;
-  }
-  const plist = template
-    .replace('__ELECTRON_PATH__', electronPath)
-    .replace('__APP_PATH__', appPath)
-    .replace(/__LOG_DIR__/g, logDir());
+  const electronPath = assertSchedulerSafePath(process.execPath, 'electronPath');
+  const appPath = assertSchedulerSafePath(app.getAppPath(), 'appPath');
+  const logDirSafe = assertSchedulerSafePath(logDir(), 'logDir');
+
+  const plist = DEFAULT_PLIST_TEMPLATE.replace('__ELECTRON_PATH__', xmlEscape(electronPath))
+    .replace('__APP_PATH__', xmlEscape(appPath))
+    .replace(/__LOG_DIR__/g, xmlEscape(logDirSafe));
 
   const dest = launchAgentPlistPath();
   if (!fs.existsSync(path.dirname(dest))) fs.mkdirSync(path.dirname(dest), { recursive: true });
-  fs.writeFileSync(dest, plist, 'utf8');
+  fs.writeFileSync(dest, plist, { encoding: 'utf8', mode: 0o600 });
+  // Re-chmod in case the file pre-existed with looser perms.
+  try { fs.chmodSync(dest, 0o600); } catch {}
 
   const uid = (process.getuid && process.getuid()) || 0;
   // bootstrap is the modern launchctl call; bootout for uninstall.
-  spawnSync('launchctl', ['bootout', `gui/${uid}`, dest], { stdio: 'ignore' });
-  const r = spawnSync('launchctl', ['bootstrap', `gui/${uid}`, dest], { stdio: 'pipe' });
+  spawnSync(LAUNCHCTL, ['bootout', `gui/${uid}`, dest], { stdio: 'ignore' });
+  const r = spawnSync(LAUNCHCTL, ['bootstrap', `gui/${uid}`, dest], { stdio: 'pipe' });
   if (r.status !== 0) {
     throw new Error(
       `launchctl bootstrap failed (${r.status}): ${r.stderr?.toString() ?? ''}`,
@@ -62,9 +82,16 @@ function installMac(): { ok: true } {
 function uninstallMac(): { ok: true } {
   const dest = launchAgentPlistPath();
   const uid = (process.getuid && process.getuid()) || 0;
-  spawnSync('launchctl', ['bootout', `gui/${uid}`, dest], { stdio: 'ignore' });
+  spawnSync(LAUNCHCTL, ['bootout', `gui/${uid}`, dest], { stdio: 'ignore' });
   if (fs.existsSync(dest)) fs.unlinkSync(dest);
   return { ok: true };
+}
+
+function xmlEscape(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
 }
 
 const DEFAULT_PLIST_TEMPLATE = `<?xml version="1.0" encoding="UTF-8"?>
@@ -102,16 +129,20 @@ const DEFAULT_PLIST_TEMPLATE = `<?xml version="1.0" encoding="UTF-8"?>
 const WIN_TASK_NAME = 'ReclaudeIndexer';
 
 function winTaskInstalled(): boolean {
-  const r = spawnSync('schtasks', ['/Query', '/TN', WIN_TASK_NAME], { stdio: 'pipe' });
+  const r = spawnSync(SCHTASKS, ['/Query', '/TN', WIN_TASK_NAME], { stdio: 'pipe' });
   return r.status === 0;
 }
 
 function installWin(): { ok: true } {
-  const electronPath = process.execPath;
-  const appPath = app.getAppPath();
-  const cmd = `\\"${electronPath}\\" \\"${appPath}\\" --reindex --no-window`;
+  const electronPath = assertSchedulerSafePath(process.execPath, 'electronPath');
+  const appPath = assertSchedulerSafePath(app.getAppPath(), 'appPath');
+  // /TR receives a single string. We pass each path wrapped in plain double
+  // quotes; assertSchedulerSafePath has already rejected any path containing
+  // a `"` or shell metachars. spawnSync uses argv-array so no parent shell
+  // re-parses /TR's value.
+  const cmd = `"${electronPath}" "${appPath}" --reindex --no-window`;
   const r = spawnSync(
-    'schtasks',
+    SCHTASKS,
     [
       '/Create',
       '/SC',
@@ -133,7 +164,7 @@ function installWin(): { ok: true } {
 }
 
 function uninstallWin(): { ok: true } {
-  spawnSync('schtasks', ['/Delete', '/TN', WIN_TASK_NAME, '/F'], { stdio: 'ignore' });
+  spawnSync(SCHTASKS, ['/Delete', '/TN', WIN_TASK_NAME, '/F'], { stdio: 'ignore' });
   return { ok: true };
 }
 
@@ -151,15 +182,18 @@ function systemdUnitInstalled(): boolean {
 }
 
 function installLinux(): { ok: true } {
-  const electronPath = process.execPath;
-  const appPath = app.getAppPath();
+  const electronPath = assertSchedulerSafePath(process.execPath, 'electronPath');
+  const appPath = assertSchedulerSafePath(app.getAppPath(), 'appPath');
+  // systemd ExecStart: each token is space-separated. Wrap path tokens in
+  // double quotes so spaces are tolerated. assertSchedulerSafePath has
+  // already rejected paths containing `"`, NUL, newline, $ or backtick.
   const service = `[Unit]
 Description=Reclaude Indexer
 
 [Service]
 Type=oneshot
 Environment=RECLAUDE_HEADLESS=1
-ExecStart=${electronPath} ${appPath} --reindex --no-window
+ExecStart="${electronPath}" "${appPath}" --reindex --no-window
 `;
   const timer = `[Unit]
 Description=Run Reclaude Indexer every 3 hours
@@ -173,10 +207,12 @@ Unit=reclaude-indexer.service
 WantedBy=default.target
 `;
   fs.mkdirSync(path.dirname(systemdServicePath()), { recursive: true });
-  fs.writeFileSync(systemdServicePath(), service, 'utf8');
-  fs.writeFileSync(systemdTimerPath(), timer, 'utf8');
-  spawnSync('systemctl', ['--user', 'daemon-reload'], { stdio: 'ignore' });
-  const r = spawnSync('systemctl', ['--user', 'enable', '--now', 'reclaude-indexer.timer'], {
+  fs.writeFileSync(systemdServicePath(), service, { encoding: 'utf8', mode: 0o600 });
+  fs.writeFileSync(systemdTimerPath(), timer, { encoding: 'utf8', mode: 0o600 });
+  try { fs.chmodSync(systemdServicePath(), 0o600); } catch {}
+  try { fs.chmodSync(systemdTimerPath(), 0o600); } catch {}
+  spawnSync(SYSTEMCTL, ['--user', 'daemon-reload'], { stdio: 'ignore' });
+  const r = spawnSync(SYSTEMCTL, ['--user', 'enable', '--now', 'reclaude-indexer.timer'], {
     stdio: 'pipe',
   });
   if (r.status !== 0) {
@@ -186,11 +222,11 @@ WantedBy=default.target
 }
 
 function uninstallLinux(): { ok: true } {
-  spawnSync('systemctl', ['--user', 'disable', '--now', 'reclaude-indexer.timer'], {
+  spawnSync(SYSTEMCTL, ['--user', 'disable', '--now', 'reclaude-indexer.timer'], {
     stdio: 'ignore',
   });
   if (fs.existsSync(systemdTimerPath())) fs.unlinkSync(systemdTimerPath());
   if (fs.existsSync(systemdServicePath())) fs.unlinkSync(systemdServicePath());
-  spawnSync('systemctl', ['--user', 'daemon-reload'], { stdio: 'ignore' });
+  spawnSync(SYSTEMCTL, ['--user', 'daemon-reload'], { stdio: 'ignore' });
   return { ok: true };
 }

@@ -14,12 +14,19 @@ export function getDb(): DB {
 
 export function initDb(): DB {
   if (db) return db;
-  if (!fs.existsSync(userDataDir())) fs.mkdirSync(userDataDir(), { recursive: true });
+  if (!fs.existsSync(userDataDir())) fs.mkdirSync(userDataDir(), { recursive: true, mode: 0o700 });
 
   db = new Database(dbPath());
   db.pragma('journal_mode = WAL');
   db.pragma('synchronous = NORMAL');
   db.pragma('foreign_keys = ON');
+
+  // Tighten perms on the DB file (and the WAL/SHM siblings created alongside)
+  // so other local users can't read session previews. Best-effort: errors are
+  // swallowed so we don't block app startup if perms cannot be set.
+  for (const suffix of ['', '-wal', '-shm']) {
+    try { fs.chmodSync(dbPath() + suffix, 0o600); } catch {}
+  }
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS projects (
@@ -137,12 +144,20 @@ export function getSession(id: string): SessionRow | undefined {
     .get(id) as SessionRow | undefined;
 }
 
+const FTS_MAX_QUERY_LEN = 256;
+const FTS_MAX_TOKENS = 10;
+
 export function searchSessions(query: string): SessionRow[] {
   const trimmed = query.trim();
   if (!trimmed) return [];
+  // Cap query size — pathological queries (very long tokens, many `*`
+  // prefixes) make FTS5 expensive. UI inputs are well under this; programmatic
+  // callers get a hard ceiling.
+  if (trimmed.length > FTS_MAX_QUERY_LEN) return [];
+  const tokens = trimmed.split(/\s+/);
+  if (tokens.length > FTS_MAX_TOKENS) return [];
   // FTS5 escape: wrap each token in quotes for safety.
-  const ftsQuery = trimmed
-    .split(/\s+/)
+  const ftsQuery = tokens
     .map((t) => `"${t.replace(/"/g, '""')}"*`)
     .join(' ');
   const ids = getDb()

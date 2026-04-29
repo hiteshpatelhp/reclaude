@@ -9,6 +9,11 @@ let watcher: FSWatcher | null = null;
 let pending = new Set<string>();
 let timer: NodeJS.Timeout | null = null;
 const DEBOUNCE_MS = 250;
+// Cap on the in-flight queue size. A process rapidly creating .jsonl files
+// in ~/.claude/projects/ would otherwise grow this Set unboundedly until
+// the debounce timer fires. 10 000 events between flushes is well beyond
+// any legitimate workload.
+const MAX_PENDING = 10_000;
 
 export function startWatcher(onChange: () => void) {
   if (watcher) return;
@@ -17,6 +22,10 @@ export function startWatcher(onChange: () => void) {
   watcher = chokidar.watch(claudeProjectsDir, {
     ignoreInitial: true,
     depth: 2,
+    // Reject symlinks: any other process running as the user could plant a
+    // symlink in ~/.claude/projects pointing outside, and we'd index that
+    // file as if it were a Claude session. Chokidar's default is true.
+    followSymlinks: false,
     awaitWriteFinish: { stabilityThreshold: 200, pollInterval: 100 },
   });
 
@@ -43,6 +52,7 @@ export function startWatcher(onChange: () => void) {
   };
 
   const queue = (p: string) => {
+    if (pending.size >= MAX_PENDING) return;
     pending.add(p);
     if (timer) clearTimeout(timer);
     timer = setTimeout(flush, DEBOUNCE_MS);
